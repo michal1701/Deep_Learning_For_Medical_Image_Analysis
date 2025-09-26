@@ -1,0 +1,10 @@
+datasets==4.1.1
+numpy==2.3.3
+pandas==2.3.2
+torch
+torchvision
+matplotlib
+scikit-learn
+opencv-python
+nibabel
+SimpleITK
