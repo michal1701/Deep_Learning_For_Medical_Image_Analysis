@@ -6,6 +6,11 @@ images/
 models/
 checkpoints/
 logs/
+figures/
+results/
+validation_data/
+training_data/
+test_data/
 
 # Python
 __pycache__/
