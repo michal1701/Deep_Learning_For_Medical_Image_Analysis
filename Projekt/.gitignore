@@ -1,15 +1,7 @@
-# Ignore everything in Projekt/ except Lab03/
-*
-!.gitignore
-!Lab03/
-!Lab03/**
-
-# Specific folders to ignore (if they exist at root level)
-../DENTEX/
-../yolo/
-../data/
-../DentexSegAndDet/
-../venv/
-../Lab02/
-
-DentexSegAndDet/
+# Folders
+Projekt/DENTEX/
+Projekt/yolo/
+Projekt/data/
+DentexSegAndDet
+Projekt/venv/
+Lab02/
