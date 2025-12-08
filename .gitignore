@@ -1,5 +1,6 @@
 # Data directories
 LungCT_Diagnosis/
+DentexSegAndDet/
 data/
 datasets/
 images/
@@ -38,6 +39,7 @@ MANIFEST
 # Virtual environments
 .env
 .venv
+.venv310/
 env/
 venv/
 ENV/

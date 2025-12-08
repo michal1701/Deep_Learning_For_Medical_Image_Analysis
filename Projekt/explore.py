@@ -1,63 +1,102 @@
-# dentex_explore.py
-from pathlib import Path
+import os
 import json
-from collections import defaultdict
+import random
+from pathlib import Path
+from collections import Counter
+import matplotlib.pyplot as plt
+from PIL import Image
+import seaborn as sns
 
-BASE = Path("DENTEX")
+# === AUTO-DETECT NESTED ROOT ===
+ROOT = Path("data/DENTEX")
+subfolder = ROOT / "DENTEX"
+if subfolder.exists():
+    DATA_DIR = subfolder
+else:
+    DATA_DIR = ROOT
 
-TRAIN_ROOT = BASE / "training_data" / "training_data"
-VAL_ROOT   = BASE / "validation_data" / "validation_data"
-TEST_ROOT  = BASE / "test_data"
+TRAIN_DIR = DATA_DIR / "training_data"
+VAL_DIR = DATA_DIR / "validation_data"
+DISEASE_DIR = DATA_DIR / "disease"
+VAL_FILE = DATA_DIR / "validation_triple.json"
 
-TRAIN_SUBSETS = {
-    "quadrant_enumeration_disease": TRAIN_ROOT / "quadrant-enumeration-disease",
-    "quadrant_enumeration":         TRAIN_ROOT / "quadrant_enumeration",
-    "quadrant":                     TRAIN_ROOT / "quadrant",
-    "unlabelled":                   TRAIN_ROOT / "unlabelled",
-}
+print(f"📂 Using dataset base: {DATA_DIR}\n")
 
-def count_images(folder: Path):
-    return sum(1 for _ in (folder.rglob("*.png"))) + sum(1 for _ in (folder.rglob("*.jpg")))
+# === 1. DIRECTORY SUMMARY ===
+def explore_structure(base_dir):
+    print("📁 Directory structure:\n")
+    for root, dirs, files in os.walk(base_dir):
+        level = root.replace(str(base_dir), "").count(os.sep)
+        indent = " " * 2 * level
+        print(f"{indent}- {os.path.basename(root)}/ ({len(files)} files, {len(dirs)} dirs)")
+    print("\n✅ Done.\n")
 
-def main():
-    print("=== DENTEX — Dataset Summary (tailored to your tree) ===\n")
+# === 2. SHOW SAMPLE IMAGES ===
+def show_samples(img_dir, n=6, title=None):
+    paths = list(Path(img_dir).rglob("*.jpg")) + list(Path(img_dir).rglob("*.png"))
+    if not paths:
+        print(f"⚠️ No images found in {img_dir}")
+        return
+    samples = random.sample(paths, min(n, len(paths)))
+    plt.figure(figsize=(12, 6))
+    for i, p in enumerate(samples):
+        img = Image.open(p)
+        plt.subplot(2, n // 2, i + 1)
+        plt.imshow(img, cmap="gray")
+        plt.title(p.stem[:15])
+        plt.axis("off")
+    plt.suptitle(title or img_dir.name)
+    plt.tight_layout()
+    plt.show()
 
-    # -------- TRAIN --------
-    print("[Train]")
-    for name, root in TRAIN_SUBSETS.items():
-        xrays = root / "xrays" if (root / "xrays").exists() else root  # unlabelled/xrays exists
-        n = count_images(xrays)
-        ann_jsons = list(root.glob("*.json"))
-        print(f"  - {name:28s}  images: {n:4d}   jsons: {len(ann_jsons)} ({[p.name for p in ann_jsons]})")
-    print()
+# === 3. EXPLORE DISEASE LABELS ===
+def explore_disease_pairs(disease_dir):
+    input_dir = disease_dir / "input"
+    label_dir = disease_dir / "label"
+    inputs = sorted(list(input_dir.glob("*.jpg")))
+    labels = sorted(list(label_dir.glob("*.jpg")))
+    print(f"🧬 Disease samples: {len(inputs)} inputs, {len(labels)} labels.")
+    if inputs and labels:
+        fig, axes = plt.subplots(2, 4, figsize=(10, 5))
+        for i in range(4):
+            if i < len(inputs):
+                axes[0, i].imshow(Image.open(inputs[i]), cmap='gray')
+                axes[0, i].set_title("Input")
+                axes[0, i].axis("off")
+            if i < len(labels):
+                axes[1, i].imshow(Image.open(labels[i]), cmap='gray')
+                axes[1, i].set_title("Label")
+                axes[1, i].axis("off")
+        plt.tight_layout()
+        plt.show()
 
-    # -------- VAL --------
-    print("[Validation]")
-    # from your tree: validation_data/validation_data/quadrant_enumeration_disease/xrays/*.png
-    val_qed = VAL_ROOT / "quadrant_enumeration_disease"
-    n_val = count_images(val_qed / "xrays")
-    print(f"  - quadrant_enumeration_disease  images: {n_val:4d}")
-    print()
+# === 4. VALIDATION JSON SUMMARY ===
+def explore_validation_json(val_file):
+    if not val_file.exists():
+        print("⚠️ Validation JSON not found.\n")
+        return
+    with open(val_file, "r") as f:
+        data = json.load(f)
+    print(f"✅ Loaded validation JSON with {len(data)} entries.")
+    print("Example entry:\n", json.dumps(data[0], indent=2) if isinstance(data, list) else data)
 
-    # -------- TEST --------
-    print("[Test]")
-    test_in  = TEST_ROOT / "disease" / "input"
-    test_lab = TEST_ROOT / "disease" / "label"
-    n_test_img = count_images(test_in)
-    n_test_lab = len(list(test_lab.glob("*.json")))
-    print(f"  - disease/input   images: {n_test_img:4d}")
-    print(f"  - disease/label   jsons : {n_test_lab:4d}")
-    print()
-
-    # -------- File-type histogram (like you printed) --------
-    suffix_hist = defaultdict(int)
-    for p in BASE.rglob("*"):
-        if p.is_file():
-            suffix_hist[p.suffix] += 1
-    print("[File extensions in DENTEX/]")
-    for k, v in sorted(suffix_hist.items(), key=lambda x: (-x[1], x[0] or "<none>")):
-        print(f"  {k or '<none>'}: {v}")
-    print()
-
+# === MAIN ===
 if __name__ == "__main__":
-    main()
+    explore_structure(DATA_DIR)
+
+    # Display samples from each dataset type
+    for subset in ["quadrant", "quadrant_enumeration", "quadrant-enumeration-disease", "unlabelled"]:
+        xr_dir = TRAIN_DIR / subset / "xrays"
+        if xr_dir.exists():
+            show_samples(xr_dir, title=subset)
+
+    # Disease input vs label visualization
+    if DISEASE_DIR.exists():
+        explore_disease_pairs(DISEASE_DIR)
+
+    # Validation samples (if present)
+    val_xrays = VAL_DIR / "quadrant_enumeration_disease" / "xrays"
+    if val_xrays.exists():
+        show_samples(val_xrays, title="Validation X-rays")
+
+    explore_validation_json(VAL_FILE)
